@@ -1,8 +1,9 @@
 services:
   caddyeditor:
     image: incredibad/caddyeditor:latest
-    ports:
-      - "7285:7285"
+    # host networking lets the container reach Caddy's admin API on localhost:2019
+    # directly. The app is then available on port 7285 of the host itself.
+    network_mode: host
     volumes:
       # Change the left side to your actual Caddyfile path on the host
       - /etc/caddy/Caddyfile:/data/Caddyfile
@@ -10,10 +11,8 @@ services:
       # Path to the Caddyfile inside the container (matches the volume target above)
       - CADDYFILE_PATH=/data/Caddyfile
 
-      # URL of Caddy's admin API, reachable from inside the container.
-      # host.docker.internal resolves to your host via the extra_hosts entry below.
-      # If Caddy's admin port is not 2019, change it here.
-      - CADDY_ADMIN_URL=http://host.docker.internal:2019
+      # Caddy's admin API — localhost works because of network_mode: host
+      - CADDY_ADMIN_URL=http://localhost:2019
 
       # Set a long random secret (e.g. openssl rand -hex 32)
       - SECRET_KEY=changeme-please-set-a-secure-secret-key
@@ -21,7 +20,4 @@ services:
       # Optional login — set PASSWORD to enable authentication, leave blank to disable
       - USERNAME=admin
       - PASSWORD=
-    extra_hosts:
-      # Allows host.docker.internal to reach the Docker host on Linux
-      - "host.docker.internal:host-gateway"
     restart: unless-stopped
