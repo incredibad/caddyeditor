@@ -1,28 +1,20 @@
 services:
   caddyeditor:
-    image: incredibad/caddyeditor:latest
+    image: incredibad/caddyeditor:latest  # use :dev for the dev build
     ports:
-      - "7285:7285"
+      - "7285:7285"                        # host:container — access the UI at http://<server>:7285
     volumes:
-      # Change the left side to your actual Caddyfile path on the host
-      - /etc/caddy/Caddyfile:/data/Caddyfile
+      - /etc/caddy/Caddyfile:/data/Caddyfile  # left = path on host, right = path inside container (don't change right side)
     environment:
-      # Path to the Caddyfile inside the container (matches the volume target above)
-      - CADDYFILE_PATH=/data/Caddyfile
-
-      # Reach Caddy's admin API via the shared proxy network using its container name
-      - CADDY_ADMIN_URL=http://caddy:2019
-
-      # Set a long random secret (e.g. openssl rand -hex 32)
-      - SECRET_KEY=changeme-please-set-a-secure-secret-key
-
-      # Optional login — set PASSWORD to enable authentication, leave blank to disable
-      - USERNAME=admin
-      - PASSWORD=
+      - CADDYFILE_PATH=/data/Caddyfile         # must match the right side of the volume mount above
+      - CADDY_ADMIN_URL=http://caddy:2019      # Caddy container name + admin port; requires admin 0.0.0.0:2019 in your Caddyfile global block
+      - SECRET_KEY=changeme-please-set-a-secure-secret-key  # run: openssl rand -hex 32
+      - USERNAME=admin                          # login username (only used if PASSWORD is set)
+      - PASSWORD=                               # leave blank to disable auth, set to enable the login page
     networks:
-      - proxy
+      - proxy  # must be the same Docker network as your Caddy container
     restart: unless-stopped
 
 networks:
   proxy:
-    external: true
+    external: true  # this network is managed externally (by Caddy's docker-compose), not created here
