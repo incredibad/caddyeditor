@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import Editor from './pages/Editor'
 import Login from './pages/Login'
+import Logs from './pages/Logs'
 
 export default function App() {
   const { isAuthenticated, isChecking } = useAuth()
@@ -22,6 +23,10 @@ export default function App() {
       <Route
         path="/login"
         element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
+      />
+      <Route
+        path="/logs"
+        element={isAuthenticated ? <Logs /> : <Navigate to="/login" replace />}
       />
       <Route
         path="/*"
