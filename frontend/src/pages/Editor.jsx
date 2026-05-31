@@ -1,10 +1,40 @@
 import MonacoEditor from '@monaco-editor/react'
-import { AlertCircle, LogOut, RefreshCw, Save, Server } from 'lucide-react'
+import { AlertCircle, CheckCircle, LogOut, RefreshCw, Save, Server, X, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import client from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
 import { registerCaddyLanguage } from '../utils/caddyLanguage'
+
+function reloadToast(message, isError) {
+  toast.custom(
+    (t) => (
+      <div
+        className="flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm"
+        style={{
+          background: 'var(--surface)',
+          border: `1px solid ${isError ? '#ef4444' : '#22c55e'}`,
+          color: 'var(--text)',
+          opacity: t.visible ? 1 : 0,
+          transition: 'opacity 0.2s',
+        }}
+      >
+        {isError
+          ? <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+          : <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />}
+        <span className="text-sm flex-1">{message}</span>
+        <button
+          onClick={() => toast.dismiss(t.id)}
+          className="flex-shrink-0 transition-colors"
+          style={{ color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    ),
+    { duration: Infinity }
+  )
+}
 
 export default function Editor() {
   const [initialContent, setInitialContent] = useState(null)
@@ -73,10 +103,10 @@ export default function Editor() {
     }
     setIsReloading(true)
     try {
-      await client.post('/api/reload')
-      toast.success('Caddy reloaded successfully')
+      const res = await client.post('/api/reload')
+      reloadToast(res.data.message || 'Caddy reloaded successfully', false)
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Reload failed')
+      reloadToast(err.response?.data?.detail || 'Reload failed', true)
     } finally {
       setIsReloading(false)
     }
