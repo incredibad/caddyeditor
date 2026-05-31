@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     caddy_admin_url: str = "http://host.docker.internal:2019"
     caddy_version: str = "latest"
     totp_data_path: str = "/data/app/totp.json"
+    caddy_container: str = "caddy"
     username: str = "admin"
     password: str = ""
 

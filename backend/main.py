@@ -3,6 +3,7 @@ import io
 import os
 import platform
 import stat
+import struct
 import subprocess
 import tarfile
 from contextlib import asynccontextmanager
@@ -136,6 +137,43 @@ async def totp_enable(body: TotpEnableRequest, user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Invalid TOTP code — check your authenticator and try again")
     totp_utils.save(body.secret)
     return {"message": "TOTP enabled"}
+
+
+@app.get("/api/logs")
+async def get_logs(tail: int = 500, user=Depends(get_current_user)):
+    try:
+        transport = httpx.AsyncHTTPTransport(uds="/var/run/docker.sock")
+        async with httpx.AsyncClient(transport=transport, base_url="http://docker", timeout=10.0) as docker:
+            resp = await docker.get(
+                f"/containers/{settings.caddy_container}/logs",
+                params={"stdout": "1", "stderr": "1", "tail": str(tail), "follow": "0"},
+            )
+        if resp.status_code == 404:
+            raise HTTPException(status_code=404, detail=f"Container '{settings.caddy_container}' not found")
+        resp.raise_for_status()
+        lines = _parse_docker_logs(resp.content)
+        return {"lines": lines, "container": settings.caddy_container}
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="Docker socket not available — add /var/run/docker.sock volume")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _parse_docker_logs(data: bytes) -> list[str]:
+    """Strip Docker's 8-byte frame headers and split into log lines."""
+    lines = []
+    offset = 0
+    while offset + 8 <= len(data):
+        size = struct.unpack(">I", data[offset + 4: offset + 8])[0]
+        offset += 8
+        chunk = data[offset: offset + size].decode("utf-8", errors="replace")
+        for line in chunk.splitlines():
+            if line.strip():
+                lines.append(line)
+        offset += size
+    return lines
 
 
 @app.post("/api/totp/disable")

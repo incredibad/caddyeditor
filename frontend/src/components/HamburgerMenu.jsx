@@ -1,11 +1,13 @@
-import { LogOut, Menu, ShieldCheck, X } from 'lucide-react'
+import { LogOut, Menu, ScrollText, ShieldCheck, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function HamburgerMenu({ onOpenTotp }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const { logout, user } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!open) return
@@ -45,6 +47,17 @@ export default function HamburgerMenu({ onOpenTotp }) {
               {user.username}
             </div>
           )}
+
+          <button
+            onClick={() => { setOpen(false); navigate('/logs') }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors"
+            style={{ color: 'var(--text)' }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <ScrollText className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--muted)' }} />
+            Logs
+          </button>
 
           <button
             onClick={() => { setOpen(false); onOpenTotp() }}
