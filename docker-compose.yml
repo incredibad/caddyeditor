@@ -1,6 +1,7 @@
 services:
   caddyeditor:
     image: incredibad/caddyeditor:latest  # use :dev for the dev build
+    container_name: caddyeditor
     ports:
       - "7285:7285"                        # host:container — access the UI at http://<server>:7285
     volumes:
