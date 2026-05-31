@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     caddy_version: str = "latest"
     totp_data_path: str = "/data/app/totp.json"
     caddy_container: str = "caddy"
+    caddy_log_file: str = ""  # if set, read logs from this file instead of Docker socket
     username: str = "admin"
     password: str = ""
 

@@ -7,7 +7,20 @@ services:
     volumes:
       - /etc/caddy/Caddyfile:/data/Caddyfile  # left = path on host, right = path inside container (don't change right side)
       - caddyeditor_data:/data/app             # persists app state (TOTP secret, etc.)
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # read-only Docker socket for fetching Caddy logs
+
+      # ── Logs: pick one option ──────────────────────────────────────────────
+      #
+      # Option A — Caddy runs in Docker (default):
+      #   Mount the Docker socket so caddyeditor can read the Caddy container's logs.
+      #   Remove this line if using Option B.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      #
+      # Option B — Caddy runs natively (systemd/binary):
+      #   Remove the Docker socket line above, set CADDY_LOG_FILE below, and
+      #   mount the log file here so the container can read it. Example:
+      #   - /var/log/caddy/caddy.log:/var/log/caddy/caddy.log:ro
+      # ───────────────────────────────────────────────────────────────────────
+
     environment:
       - CADDYFILE_PATH=/data/Caddyfile         # must match the right side of the volume mount above
       - CADDY_ADMIN_URL=http://caddy:2019      # Caddy container name + admin port; requires admin 0.0.0.0:2019 in your Caddyfile global block
@@ -17,7 +30,22 @@ services:
       - SECRET_KEY=changeme-please-set-a-secure-secret-key  # run: openssl rand -hex 32
       - USERNAME=admin                          # login username (only used if PASSWORD is set)
       - PASSWORD=                               # leave blank to disable auth, set to enable the login page
-      - CADDY_CONTAINER=caddy                   # name of the Caddy container to fetch logs from
+
+      # ── Logs: pick one option ──────────────────────────────────────────────
+      #
+      # Option A — Caddy runs in Docker (default):
+      #   Set the container name. Leave CADDY_LOG_FILE blank.
+      - CADDY_CONTAINER=caddy                  # name of the Caddy Docker container
+      - CADDY_LOG_FILE=                        # leave blank to use Docker socket (Option A)
+      #
+      # Option B — Caddy runs natively:
+      #   Set CADDY_LOG_FILE to the path inside the container (matching the volume mount above).
+      #   Leave CADDY_CONTAINER set to anything (it won't be used).
+      #   Make sure Caddy is configured to write JSON logs to a file, e.g. in your Caddyfile:
+      #     { log { output file /var/log/caddy/caddy.log { roll_size 10mb } } }
+      #   Then set: CADDY_LOG_FILE=/var/log/caddy/caddy.log
+      # ───────────────────────────────────────────────────────────────────────
+
     networks:
       - proxy  # must be the same Docker network as your Caddy container
     restart: unless-stopped
