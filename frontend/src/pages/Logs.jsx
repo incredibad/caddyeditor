@@ -146,7 +146,7 @@ function PrettyEntry({ raw }) {
 export default function Logs() {
   const navigate = useNavigate()
   const [lines, setLines] = useState([])
-  const [container, setContainer] = useState('')
+  const [source, setSource] = useState('')
   const [tab, setTab] = useState('pretty') // 'raw' | 'pretty'
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -158,7 +158,7 @@ export default function Logs() {
     try {
       const res = await client.get(`/api/logs?tail=${tail}`)
       setLines(res.data.lines)
-      setContainer(res.data.container)
+      setSource(res.data.source)
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to fetch logs')
     } finally {
@@ -191,9 +191,9 @@ export default function Logs() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <span className="font-semibold text-sm">Logs</span>
-          {container && (
+          {source && (
             <span className="text-xs font-mono" style={{ color: 'var(--muted)' }}>
-              {container}
+              {source}
             </span>
           )}
         </div>

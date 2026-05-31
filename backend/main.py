@@ -141,20 +141,41 @@ async def totp_enable(body: TotpEnableRequest, user=Depends(get_current_user)):
 
 @app.get("/api/logs")
 async def get_logs(tail: int = 500, user=Depends(get_current_user)):
+    if settings.caddy_log_file:
+        return _logs_from_file(settings.caddy_log_file, tail)
+    return await _logs_from_docker(settings.caddy_container, tail)
+
+
+def _logs_from_file(path: str, tail: int) -> dict:
+    try:
+        with open(path, "r") as f:
+            all_lines = [l.rstrip("\n") for l in f if l.strip()]
+        return {"lines": all_lines[-tail:], "source": path}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Log file not found: {path}")
+    except PermissionError:
+        raise HTTPException(status_code=403, detail=f"Permission denied reading {path}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _logs_from_docker(container: str, tail: int) -> dict:
     try:
         transport = httpx.AsyncHTTPTransport(uds="/var/run/docker.sock")
         async with httpx.AsyncClient(transport=transport, base_url="http://docker", timeout=10.0) as docker:
             resp = await docker.get(
-                f"/containers/{settings.caddy_container}/logs",
+                f"/containers/{container}/logs",
                 params={"stdout": "1", "stderr": "1", "tail": str(tail), "follow": "0"},
             )
         if resp.status_code == 404:
-            raise HTTPException(status_code=404, detail=f"Container '{settings.caddy_container}' not found")
+            raise HTTPException(status_code=404, detail=f"Container '{container}' not found")
         resp.raise_for_status()
-        lines = _parse_docker_logs(resp.content)
-        return {"lines": lines, "container": settings.caddy_container}
+        return {"lines": _parse_docker_logs(resp.content), "source": f"container:{container}"}
     except FileNotFoundError:
-        raise HTTPException(status_code=503, detail="Docker socket not available — add /var/run/docker.sock volume")
+        raise HTTPException(
+            status_code=503,
+            detail="Docker socket not available — mount /var/run/docker.sock or set CADDY_LOG_FILE",
+        )
     except HTTPException:
         raise
     except Exception as e:
