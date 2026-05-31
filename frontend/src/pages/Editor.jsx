@@ -144,81 +144,104 @@ export default function Editor() {
     <div className="flex flex-col h-screen" style={{ background: 'var(--bg)' }}>
       {/* Header */}
       <header
-        className="flex items-center justify-between px-4 flex-shrink-0"
-        style={{
-          height: '56px',
-          background: 'var(--surface)',
-          borderBottom: '1px solid var(--border)',
-        }}
+        className="flex-shrink-0 px-4"
+        style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <Server className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--primary)' }} />
-          <span className="font-semibold text-sm flex-shrink-0">Caddy Editor</span>
-          {filePath && (
-            <span
-              className="text-xs font-mono truncate hidden sm:block"
+        {/* Main row — always visible */}
+        <div className="flex items-center h-12 gap-3">
+          {/* Left: logo + title + path + dirty dot */}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <Server className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--primary)' }} />
+            <span className="font-semibold text-sm flex-shrink-0">Caddy Editor</span>
+            {filePath && (
+              <span
+                className="text-xs font-mono truncate hidden sm:block"
+                style={{ color: 'var(--muted)' }}
+              >
+                {filePath}
+              </span>
+            )}
+            {isDirty && (
+              <span className="w-2 h-2 rounded-full flex-shrink-0 bg-yellow-400" title="Unsaved changes" />
+            )}
+          </div>
+
+          {/* Right: buttons on desktop + logout always */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                onClick={handleSave}
+                disabled={isSaving || isLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-50"
+                style={{ background: 'var(--primary)', color: 'white' }}
+                title="Save (Ctrl+S)"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {isSaving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                onClick={handleFormat}
+                disabled={isFormatting || isLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-50"
+                style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                title="Format Caddyfile (caddy fmt)"
+              >
+                <Wand2 className="w-3.5 h-3.5" />
+                {isFormatting ? 'Formatting…' : 'Format'}
+              </button>
+              <button
+                onClick={handleReload}
+                disabled={isReloading || isLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-50"
+                style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                title="Reload Caddy via admin API"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isReloading ? 'animate-spin' : ''}`} />
+                {isReloading ? 'Reloading…' : 'Reload Caddy'}
+              </button>
+            </div>
+            <button
+              onClick={logout}
+              className="p-1.5 rounded-md"
               style={{ color: 'var(--muted)' }}
+              title={`Logout (${user?.username})`}
             >
-              {filePath}
-            </span>
-          )}
-          {isDirty && (
-            <span
-              className="w-2 h-2 rounded-full flex-shrink-0 bg-yellow-400"
-              title="Unsaved changes"
-            />
-          )}
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Mobile button row — shown below sm breakpoint */}
+        <div
+          className="flex sm:hidden items-center gap-2 pb-2 pt-2"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
           <button
             onClick={handleSave}
             disabled={isSaving || isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-50"
             style={{ background: 'var(--primary)', color: 'white' }}
-            title="Save (Ctrl+S)"
           >
             <Save className="w-3.5 h-3.5" />
             {isSaving ? 'Saving…' : 'Save'}
           </button>
-
           <button
             onClick={handleFormat}
             disabled={isFormatting || isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-50"
-            style={{
-              background: 'var(--surface-hover)',
-              border: '1px solid var(--border)',
-              color: 'var(--text)',
-            }}
-            title="Format Caddyfile (caddy fmt)"
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-50"
+            style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', color: 'var(--text)' }}
           >
             <Wand2 className="w-3.5 h-3.5" />
             {isFormatting ? 'Formatting…' : 'Format'}
           </button>
-
           <button
             onClick={handleReload}
             disabled={isReloading || isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-50"
-            style={{
-              background: 'var(--surface-hover)',
-              border: '1px solid var(--border)',
-              color: 'var(--text)',
-            }}
-            title="Reload Caddy via admin API"
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-50"
+            style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', color: 'var(--text)' }}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isReloading ? 'animate-spin' : ''}`} />
-            {isReloading ? 'Reloading…' : 'Reload Caddy'}
-          </button>
-
-          <button
-            onClick={logout}
-            className="p-1.5 rounded-md transition-colors"
-            style={{ color: 'var(--muted)' }}
-            title={`Logout (${user?.username})`}
-          >
-            <LogOut className="w-4 h-4" />
+            {isReloading ? 'Reloading…' : 'Reload'}
           </button>
         </div>
       </header>
