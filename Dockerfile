@@ -1,5 +1,4 @@
-ARG CADDY_VERSION=latest
-FROM caddy:${CADDY_VERSION} AS caddy-source
+FROM caddy:latest AS caddy-source
 
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
