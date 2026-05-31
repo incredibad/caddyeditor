@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException
@@ -19,6 +20,10 @@ class LoginRequest(BaseModel):
 
 
 class CaddyfileContent(BaseModel):
+    content: str
+
+
+class FormatRequest(BaseModel):
     content: str
 
 
@@ -70,6 +75,29 @@ async def save_caddyfile(body: CaddyfileContent, user=Depends(get_current_user))
         return {"message": "Saved successfully"}
     except PermissionError:
         raise HTTPException(status_code=403, detail=f"Permission denied writing {settings.caddyfile_path}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/format")
+async def format_caddyfile(body: FormatRequest, user=Depends(get_current_user)):
+    try:
+        result = subprocess.run(
+            ["caddy", "fmt", "-"],
+            input=body.content,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=400, detail=result.stderr.strip() or "Format failed")
+        return {"content": result.stdout}
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="caddy binary not found in container")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="Format timed out")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
