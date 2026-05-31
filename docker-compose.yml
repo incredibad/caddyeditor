@@ -5,6 +5,11 @@ services:
       - "7285:7285"                        # host:container — access the UI at http://<server>:7285
     volumes:
       - /etc/caddy/Caddyfile:/data/Caddyfile  # left = path on host, right = path inside container (don't change right side)
+    build:
+      context: .
+      args:
+        # Pin to match your running Caddy version (docker exec caddy caddy version)
+        CADDY_VERSION: latest
     environment:
       - CADDYFILE_PATH=/data/Caddyfile         # must match the right side of the volume mount above
       - CADDY_ADMIN_URL=http://caddy:2019      # Caddy container name + admin port; requires admin 0.0.0.0:2019 in your Caddyfile global block
