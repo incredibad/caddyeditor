@@ -1,5 +1,3 @@
-FROM caddy:latest AS caddy-source
-
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
@@ -13,7 +11,6 @@ WORKDIR /app
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --from=caddy-source /usr/bin/caddy /usr/local/bin/caddy
 COPY --from=frontend-builder /app/frontend/dist ./static
 COPY backend/ ./
 
