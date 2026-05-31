@@ -1,9 +1,10 @@
 import MonacoEditor from '@monaco-editor/react'
-import { AlertCircle, CheckCircle, LogOut, RefreshCw, Save, Server, Wand2, X, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle, RefreshCw, Save, Server, Wand2, X, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import client from '../api/client'
-import { useAuth } from '../contexts/AuthContext'
+import HamburgerMenu from '../components/HamburgerMenu'
+import TotpModal from '../components/TotpModal'
 import { registerCaddyLanguage } from '../utils/caddyLanguage'
 
 function reloadToast(message, isError) {
@@ -45,10 +46,10 @@ export default function Editor() {
   const [isFormatting, setIsFormatting] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [statusNote, setStatusNote] = useState(null)
+  const [totpOpen, setTotpOpen] = useState(false)
 
   const editorRef = useRef(null)
   const savedContentRef = useRef('')
-  const { logout, user } = useAuth()
 
   useEffect(() => {
     client
@@ -166,7 +167,7 @@ export default function Editor() {
             )}
           </div>
 
-          {/* Right: buttons on desktop + logout always */}
+          {/* Right: buttons on desktop + hamburger always */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="hidden sm:flex items-center gap-2">
               <button
@@ -200,14 +201,7 @@ export default function Editor() {
                 {isReloading ? 'Reloading…' : 'Reload Caddy'}
               </button>
             </div>
-            <button
-              onClick={logout}
-              className="p-1.5 rounded-md"
-              style={{ color: 'var(--muted)' }}
-              title={`Logout (${user?.username})`}
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            <HamburgerMenu onOpenTotp={() => setTotpOpen(true)} />
           </div>
         </div>
 
@@ -282,6 +276,8 @@ export default function Editor() {
           />
         )}
       </div>
+
+      {totpOpen && <TotpModal onClose={() => setTotpOpen(false)} />}
 
       {/* Status bar */}
       {(statusNote || isDirty) && (

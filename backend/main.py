@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from auth import create_access_token, get_current_user
 from config import settings
+import totp_utils
 
 STATIC_DIR = "/app/static"
 CADDY_BIN = "/usr/local/bin/caddy"
@@ -68,6 +69,16 @@ app = FastAPI(title="Caddy Editor", docs_url=None, redoc_url=None, lifespan=life
 class LoginRequest(BaseModel):
     username: str
     password: str
+    totp_code: str | None = None
+
+
+class TotpEnableRequest(BaseModel):
+    secret: str
+    code: str
+
+
+class TotpDisableRequest(BaseModel):
+    code: str
 
 
 class CaddyfileContent(BaseModel):
@@ -87,6 +98,12 @@ async def login(request: LoginRequest):
     if request.username != settings.username or request.password != settings.password:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    if totp_utils.is_enabled():
+        if not request.totp_code:
+            return {"totp_required": True}
+        if not totp_utils.verify(request.totp_code):
+            raise HTTPException(status_code=401, detail="Invalid TOTP code")
+
     token = create_access_token({"sub": request.username})
     return {"access_token": token, "token_type": "bearer"}
 
@@ -99,6 +116,34 @@ async def me(user=Depends(get_current_user)):
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/api/totp/status")
+async def totp_status(user=Depends(get_current_user)):
+    return {"enabled": totp_utils.is_enabled()}
+
+
+@app.post("/api/totp/setup")
+async def totp_setup(user=Depends(get_current_user)):
+    secret = totp_utils.generate_secret()
+    uri = totp_utils.provisioning_uri(secret, user["username"])
+    return {"secret": secret, "uri": uri}
+
+
+@app.post("/api/totp/enable")
+async def totp_enable(body: TotpEnableRequest, user=Depends(get_current_user)):
+    if not totp_utils.verify(body.code, secret=body.secret):
+        raise HTTPException(status_code=400, detail="Invalid TOTP code — check your authenticator and try again")
+    totp_utils.save(body.secret)
+    return {"message": "TOTP enabled"}
+
+
+@app.post("/api/totp/disable")
+async def totp_disable(body: TotpDisableRequest, user=Depends(get_current_user)):
+    if not totp_utils.verify(body.code):
+        raise HTTPException(status_code=400, detail="Invalid TOTP code")
+    totp_utils.disable()
+    return {"message": "TOTP disabled"}
 
 
 @app.get("/api/caddyfile")
