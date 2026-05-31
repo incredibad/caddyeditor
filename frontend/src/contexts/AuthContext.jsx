@@ -25,12 +25,15 @@ export function AuthProvider({ children }) {
       .finally(() => setIsChecking(false))
   }, [])
 
-  const login = async (username, password) => {
-    const res = await axios.post('/auth/login', { username, password })
-    const { access_token } = res.data
-    localStorage.setItem('token', access_token)
+  const login = async (username, password, totpCode = null) => {
+    const payload = { username, password }
+    if (totpCode) payload.totp_code = totpCode
+    const res = await axios.post('/auth/login', payload)
+    if (res.data.totp_required) return { totp_required: true }
+    localStorage.setItem('token', res.data.access_token)
     setUser({ username })
     setIsAuthenticated(true)
+    return {}
   }
 
   const logout = () => {
