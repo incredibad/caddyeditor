@@ -8,6 +8,7 @@ services:
     environment:
       - CADDYFILE_PATH=/data/Caddyfile         # must match the right side of the volume mount above
       - CADDY_ADMIN_URL=http://caddy:2019      # Caddy container name + admin port; requires admin 0.0.0.0:2019 in your Caddyfile global block
+      - CADDY_VERSION=latest                   # version to use for caddy fmt — set to match your running Caddy (e.g. 2.9.1)
       - SECRET_KEY=changeme-please-set-a-secure-secret-key  # run: openssl rand -hex 32
       - USERNAME=admin                          # login username (only used if PASSWORD is set)
       - PASSWORD=                               # leave blank to disable auth, set to enable the login page

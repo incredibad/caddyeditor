@@ -1,5 +1,11 @@
+import asyncio
+import io
 import os
+import platform
+import stat
 import subprocess
+import tarfile
+from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException
@@ -9,9 +15,54 @@ from pydantic import BaseModel
 from auth import create_access_token, get_current_user
 from config import settings
 
-app = FastAPI(title="Caddy Editor", docs_url=None, redoc_url=None)
-
 STATIC_DIR = "/app/static"
+CADDY_BIN = "/usr/local/bin/caddy"
+ARCH_MAP = {"x86_64": "amd64", "aarch64": "arm64", "armv7l": "armv7"}
+
+
+async def download_caddy():
+    version = settings.caddy_version
+    arch = ARCH_MAP.get(platform.machine(), "amd64")
+
+    # For a pinned version, skip download if the right version is already present
+    if os.path.exists(CADDY_BIN) and version != "latest":
+        result = subprocess.run([CADDY_BIN, "version"], capture_output=True, text=True)
+        if f"v{version}" in result.stdout:
+            return
+
+    async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+        if version == "latest":
+            resp = await client.get(
+                "https://api.github.com/repos/caddyserver/caddy/releases/latest",
+                headers={"Accept": "application/vnd.github+json"},
+            )
+            resp.raise_for_status()
+            version = resp.json()["tag_name"].lstrip("v")
+
+        url = (
+            f"https://github.com/caddyserver/caddy/releases/download/"
+            f"v{version}/caddy_{version}_linux_{arch}.tar.gz"
+        )
+        print(f"Downloading caddy v{version} ({arch})...")
+        resp = await client.get(url)
+        resp.raise_for_status()
+
+    with tarfile.open(fileobj=io.BytesIO(resp.content)) as tar:
+        member = tar.getmember("caddy")
+        with open(CADDY_BIN, "wb") as f:
+            f.write(tar.extractfile(member).read())
+
+    os.chmod(CADDY_BIN, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+    print(f"caddy v{version} ready at {CADDY_BIN}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(download_caddy())
+    yield
+
+
+app = FastAPI(title="Caddy Editor", docs_url=None, redoc_url=None, lifespan=lifespan)
 
 
 class LoginRequest(BaseModel):
@@ -81,9 +132,11 @@ async def save_caddyfile(body: CaddyfileContent, user=Depends(get_current_user))
 
 @app.post("/api/format")
 async def format_caddyfile(body: FormatRequest, user=Depends(get_current_user)):
+    if not os.path.exists(CADDY_BIN):
+        raise HTTPException(status_code=503, detail="caddy binary not ready yet — try again in a moment")
     try:
         result = subprocess.run(
-            ["caddy", "fmt", "-"],
+            [CADDY_BIN, "fmt", "-"],
             input=body.content,
             capture_output=True,
             text=True,
@@ -92,8 +145,6 @@ async def format_caddyfile(body: FormatRequest, user=Depends(get_current_user)):
         if result.returncode != 0:
             raise HTTPException(status_code=400, detail=result.stderr.strip() or "Format failed")
         return {"content": result.stdout}
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="caddy binary not found in container")
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=500, detail="Format timed out")
     except HTTPException:
