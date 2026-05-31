@@ -1,5 +1,5 @@
 import MonacoEditor from '@monaco-editor/react'
-import { AlertCircle, CheckCircle, LogOut, RefreshCw, Save, Server, X, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle, LogOut, RefreshCw, Save, Server, Wand2, X, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import client from '../api/client'
@@ -42,6 +42,7 @@ export default function Editor() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isReloading, setIsReloading] = useState(false)
+  const [isFormatting, setIsFormatting] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [statusNote, setStatusNote] = useState(null)
 
@@ -112,6 +113,21 @@ export default function Editor() {
     }
   }, [isDirty, isReloading])
 
+  const handleFormat = useCallback(async () => {
+    if (!editorRef.current || isFormatting) return
+    const content = editorRef.current.getValue()
+    setIsFormatting(true)
+    try {
+      const res = await client.post('/api/format', { content })
+      editorRef.current.setValue(res.data.content)
+      toast.success('Formatted')
+    } catch (err) {
+      reloadToast(err.response?.data?.detail || 'Format failed', true)
+    } finally {
+      setIsFormatting(false)
+    }
+  }, [isFormatting])
+
   // Ctrl/Cmd+S to save
   useEffect(() => {
     const handler = (e) => {
@@ -164,6 +180,21 @@ export default function Editor() {
           >
             <Save className="w-3.5 h-3.5" />
             {isSaving ? 'Saving…' : 'Save'}
+          </button>
+
+          <button
+            onClick={handleFormat}
+            disabled={isFormatting || isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-opacity disabled:opacity-50"
+            style={{
+              background: 'var(--surface-hover)',
+              border: '1px solid var(--border)',
+              color: 'var(--text)',
+            }}
+            title="Format Caddyfile (caddy fmt)"
+          >
+            <Wand2 className="w-3.5 h-3.5" />
+            {isFormatting ? 'Formatting…' : 'Format'}
           </button>
 
           <button
